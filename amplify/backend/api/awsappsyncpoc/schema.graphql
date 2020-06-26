@@ -1,0 +1,16 @@
+enum JobStatus {
+  SCHEDULED
+  DISPATCHED
+  ARRIVED
+  WORKING
+  COMPLETED
+}
+
+type Job @auth @model {
+  id: ID!
+  title: String!
+  owner: String!
+  phoneNumber: String!
+  address: String!
+  status: JobStatus!
+}

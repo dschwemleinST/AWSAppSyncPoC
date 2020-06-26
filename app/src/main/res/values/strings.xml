@@ -1,0 +1,13 @@
+<resources>
+    <string name="app_name">AWS AppSync PoC</string>
+    <string name="change_value">Change Value</string>
+    <string name="unknown"><![CDATA[<Unknown>]]></string>
+    <string name="scheduled">Scheduled</string>
+    <string name="dispatched">Dispatched</string>
+    <string name="completed">Completed</string>
+    <string name="add">Add</string>
+    <string name="remove">Remove</string>
+    <string name="job_name">Job Name</string>
+    <string name="job_id">Job ID</string>
+    <string name="add_job">Add Job</string>
+</resources>
