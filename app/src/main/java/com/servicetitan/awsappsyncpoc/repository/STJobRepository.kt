@@ -33,103 +33,84 @@ class STJobRepository @Inject constructor() : JobRepository {
                 Timber.v("XXX Query onComplete")
                 subscriber.onComplete()
             },
-            {
-                Timber.v(it, "XXX Query failed")
-                subscriber.onError(it)
+            { exception ->
+                Timber.v(exception, "XXX Query failed ${exception.message}")
+                subscriber.onError(exception)
             }
         )
     }
 
-    override fun observeJobChanges() = Observable.create<DataStoreItemChange<Job>> { subscriber -> // Never complete
-        Amplify.DataStore.observe(
-            Job::class.java,
-            { Timber.v("XXX Observation began") },
-            { itemChange ->
-                Timber.v("XXX Observed Job: $itemChange")
-                subscriber.onNext(itemChange)
-            },
-            {
-                Timber.e(it, "XXX Observation failed")
-                subscriber.onError(it)
-            },
-            { Timber.v("XXX Observation complete") }
-        )
-    }
+    override fun observeJobChanges() =
+        Observable.create<DataStoreItemChange<Job>> { subscriber -> // Never completes
+            Amplify.DataStore.observe(
+                Job::class.java,
+                { Timber.v("XXX Observation began") },
+                { itemChange ->
+                    Timber.v("XXX Observed Job: $itemChange")
+                    subscriber.onNext(itemChange)
+                },
+                { exception ->
+                    Timber.e(exception, "XXX Observation failed ${exception.message}")
+                    subscriber.onError(exception)
+                },
+                { Timber.v("XXX Observation complete") }
+            )
+        }
 
-    override fun createOrUpdateJob(
-        optionalJobId: String?,
-        status: JobStatus,
-        owner: String
-    ): Single<Job> {
-        return optionalJobId?.let { jobId ->
-            updateExistingJob(jobId, status, owner)
-        } ?: saveJob(
-            Job.builder() // Without an ID, this will create a new record.
-                .title("Job 1")
-                .owner(owner)
-                .phoneNumber("555-555-1234")
-                .address("Some Address")
-                .status(status)
-                .build()
-        )
-    }
-
-    private fun saveJob(job: Job): Single<Job> {
+    override fun saveJob(job: Job): Single<Job> {
         Timber.v("XXX saveJob $job")
         return Single.create { emitter ->
             Amplify.DataStore.save(
                 job,
-                {
-                    Timber.v("XXX Saved job ${it.item()}")
-                    emitter.onSuccess(it.item())
+                { itemChange ->
+                    Timber.v("XXX Saved job ${itemChange.item()}")
+                    emitter.onSuccess(itemChange.item())
                 },
-                {
-                    Timber.e(it, "XXX Save job failed: ${it.message}")
-                    emitter.onError(it)
+                { exception ->
+                    Timber.e(exception, "XXX Save job failed: ${exception.message}")
+                    emitter.onError(exception)
                 })
         }
     }
 
-    private fun updateExistingJob(
-        jobId: String,
-        status: JobStatus,
-        owner: String
-    ): Single<Job> {
-        Timber.v("XXX Updating Existing Job")
+    override fun getJob(jobID: String): Single<Job> {
+        Timber.v("XXX getJob $jobID")
         return Single.create { emitter ->
-            Amplify.DataStore.query(Job::class.java, Where.matches(Job.ID.eq(jobId)),
-                {
-                    val existingJob = it.next()
+            Amplify.DataStore.query(Job::class.java, Where.matches(Job.ID.eq(jobID)),
+                { jobs ->
+                    val existingJob = jobs.next()
                     Timber.v("XXX Found existing job $existingJob")
-
-                    // Update the job.
-                    existingJob.copyOfBuilder()
-                        .status(status)
-                        .owner(owner)
-                        .build().apply {
-                            Timber.v("XXX Saving updated job $this")
-                            saveJob(this).subscribe({emitter.onSuccess(it)}, {})
-                        }
-
-                    //saveSucceededEvent.call() // TODO: Move to UI thread
+                    emitter.onSuccess(existingJob)
                 },
-                {
-                    Timber.e(it, "XXX Find existing failed: ${it.message} for Job ID $jobId")
-                    //saveFailedEvent.value = it.message // TODO: Move to UI thread
+                { exception ->
+                    Timber.e(exception, "XXX Get job failed: ${exception.message}")
+                    emitter.onError(exception)
                 })
         }
     }
+
+    private fun createNewJob(
+        owner: String,
+        status: JobStatus
+    ): Job =
+        Job.builder() // Without an ID, this will create a new record.
+            .title("Job 1")
+            .owner(owner)
+            .phoneNumber("555-555-1234")
+            .address("Some Address")
+            .status(status)
+            .build()
 
     override fun deleteJob(job: Job): Completable {
         Timber.v("XXX Deleting Job")
         return Completable.create { emitter ->
             kotlin.runCatching {
-                Amplify.DataStore.delete(job, {
-                    Timber.v("XXX Success deleting job $it")
+                Amplify.DataStore.delete(job, { itemChange ->
+                    Timber.v("XXX Success deleting job ${itemChange.item()}")
                     emitter.onComplete()
-                }, {
-                    Timber.v("XXX Error deleting job $it")
-                    emitter.onError(it)
+                }, { exception ->
+                    Timber.v(exception, "XXX Error deleting job ${exception.message}")
+                    emitter.onError(exception)
                 })
             }.onFailure { emitter.onError(it) }
         }

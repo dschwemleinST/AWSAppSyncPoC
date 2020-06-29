@@ -19,14 +19,13 @@ class MainViewModel @Inject constructor(private val jobRepository: JobRepository
 
     fun init() {
         // One-time query.
-        Timber.v("XXX Starting Query")
         jobRepository.queryCurrentJobs()
             .subscribeOn(Schedulers.io())
             .observeOn(AndroidSchedulers.mainThread())
             .subscribe(
-                { job -> jobs.value = jobs.value!!.toMutableList().apply {
-                    add(job)
-                }.sortedBy { it.owner + "   " + it.id } },
+                { job ->
+                    refreshJobInModel(job)
+                },
                 { Timber.v(it, "XXX Error in Query") })
             .addTo(disposables)
 
@@ -52,26 +51,56 @@ class MainViewModel @Inject constructor(private val jobRepository: JobRepository
                 },
                 { Timber.v(it, "XXX Error in Observe") })
             .addTo(disposables)
-
-        Timber.v("XXX Done with init")
     }
 
-    fun createOrUpdateJob(optionalJobId: String?, status: JobStatus, owner: String) {
-        jobRepository.createOrUpdateJob(optionalJobId, status, owner)
+    fun updateJobStatus(jobID: String, status: JobStatus) {
+        jobRepository.getJob(jobID)
+            .flatMap { job ->
+                jobRepository.saveJob(job.copyOfBuilder().status(status).build())
+            }
             .subscribeOn(Schedulers.io())
             .observeOn(AndroidSchedulers.mainThread())
-            .subscribe({ Timber.v("XXX Success saving") }, { Timber.v(it, "XXX Error saving") })
+            .subscribe(
+                { savedJob ->
+                    refreshJobInModel(savedJob)
+                }, { Timber.v(it, "XXX Error in updateJobStatus: ${it.message}") })
+            .addTo(disposables)
+
+        hideKeyboard.call()
+    }
+
+    fun updateJobOwner(jobID: String, owner: String) {
+        jobRepository.getJob(jobID)
+            .flatMap { job ->
+                jobRepository.saveJob(job.copyOfBuilder().owner(owner).build())
+            }
+            .subscribeOn(Schedulers.io())
+            .observeOn(AndroidSchedulers.mainThread())
+            .subscribe(
+                { savedJob ->
+                    refreshJobInModel(savedJob)
+                }, { Timber.v(it, "XXX Error in updateJobOwner: ${it.message}") })
             .addTo(disposables)
 
         hideKeyboard.call()
     }
 
     fun addNewJob() {
-        jobRepository.createOrUpdateJob(null, JobStatus.SCHEDULED, "Michael Keaton")
+        jobRepository.saveJob(
+            Job.Builder()
+                .title("Random title")
+                .owner("Michael Keaton")
+                .phoneNumber("555-555-1234")
+                .address("Some Address")
+                .status(JobStatus.SCHEDULED)
+                .build()
+        )
             .subscribeOn(Schedulers.io())
             .observeOn(AndroidSchedulers.mainThread())
             .subscribe(
-                { Timber.v("XXX Success creating new") },
+                { savedJob ->
+                    refreshJobInModel(savedJob)
+                },
                 { Timber.v(it, "XXX Error creating new") })
             .addTo(disposables)
     }
@@ -81,8 +110,16 @@ class MainViewModel @Inject constructor(private val jobRepository: JobRepository
             .subscribeOn(Schedulers.io())
             .observeOn(AndroidSchedulers.mainThread())
             .subscribe(
-                { Timber.v("XXX Success deleting job") },
+                { },
                 { Timber.v(it, "XXX Error deleting job") })
             .addTo(disposables)
     }
+
+    private fun refreshJobInModel(job: Job) {
+        jobs.value = jobs.value!!.toMutableList().apply {
+            removeIf { it.id == job.id }
+            add(job)
+        }.sortedBy { it.owner + "   " + it.id }
+    }
 }
+

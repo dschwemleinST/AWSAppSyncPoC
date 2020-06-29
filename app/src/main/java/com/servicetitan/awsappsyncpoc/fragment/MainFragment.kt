@@ -45,15 +45,19 @@ class MainFragment : BaseFragment<MainViewModel, FragmentMainBinding>(),
     }
 
     override fun onScheduledButtonClicked(jobId: String, owner: String) {
-        updateJob(jobId, JobStatus.SCHEDULED, owner)
+        viewModel.updateJobStatus(jobId, JobStatus.SCHEDULED)
     }
 
     override fun onDispatchedButtonClicked(jobId: String, owner: String) {
-        updateJob(jobId, JobStatus.DISPATCHED, owner)
+        viewModel.updateJobStatus(jobId, JobStatus.DISPATCHED)
     }
 
     override fun onCompletedButtonClicked(jobId: String, owner: String) {
-        updateJob(jobId, JobStatus.COMPLETED, owner)
+        viewModel.updateJobStatus(jobId, JobStatus.COMPLETED)
+    }
+
+    override fun saveJobButtonClicked(jobId: String, owner: String) {
+        viewModel.updateJobOwner(jobId, owner)
     }
 
     override fun addNewJobButtonClicked() {
@@ -62,10 +66,6 @@ class MainFragment : BaseFragment<MainViewModel, FragmentMainBinding>(),
 
     override fun closeJobButtonClicked(job: Job) {
         viewModel.deleteJob(job)
-    }
-
-    private fun updateJob(jobId: String, jobStatus: JobStatus, owner: String) {
-        viewModel.createOrUpdateJob(jobId, jobStatus, owner)
     }
 
     override fun inject() {

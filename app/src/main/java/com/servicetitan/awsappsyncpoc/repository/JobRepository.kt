@@ -10,6 +10,8 @@ import io.reactivex.Single
 interface JobRepository {
     fun queryCurrentJobs(): Observable<Job>
     fun observeJobChanges(): Observable<DataStoreItemChange<Job>>
-    fun createOrUpdateJob(optionalJobId: String?, status: JobStatus, owner: String): Single<Job>
+
+    fun getJob(jobID: String): Single<Job>
+    fun saveJob(job: Job): Single<Job>
     fun deleteJob(job: Job): Completable
 }

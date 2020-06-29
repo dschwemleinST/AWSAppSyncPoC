@@ -81,6 +81,12 @@ class MainRecyclerViewAdapter(private val context: Context, private val callback
                 }
 
                 holder.closeButton.setOnClickListener { callbacks.closeJobButtonClicked(this) }
+                holder.saveButton.setOnClickListener {
+                    callbacks.saveJobButtonClicked(
+                        id,
+                        holder.jobNameTextView.text.toString()
+                    )
+                }
             }
         } else {
             (holder as AddJobButtonViewHolder).let {
@@ -100,6 +106,7 @@ class MainRecyclerViewAdapter(private val context: Context, private val callback
         val completedButton: Button = itemView.findViewById(R.id.completed_button)
 
         val closeButton: View = itemView.findViewById(R.id.close_job_button)
+        val saveButton: View = itemView.findViewById(R.id.save_job_button)
     }
 
     inner class AddJobButtonViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
@@ -137,5 +144,6 @@ class MainRecyclerViewAdapter(private val context: Context, private val callback
 
         fun addNewJobButtonClicked()
         fun closeJobButtonClicked(job: Job)
+        fun saveJobButtonClicked(jobId: String, owner: String)
     }
 }
