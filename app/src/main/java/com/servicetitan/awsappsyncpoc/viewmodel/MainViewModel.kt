@@ -26,7 +26,7 @@ class MainViewModel @Inject constructor(private val jobRepository: JobRepository
                 { job ->
                     refreshJobInModel(job)
                 },
-                { Timber.v(it, "XXX Error in Query") })
+                { Timber.v(it, "XXX Error in Query ${it.message}") })
             .addTo(disposables)
 
         // Observe for changes.
@@ -49,7 +49,7 @@ class MainViewModel @Inject constructor(private val jobRepository: JobRepository
                             }
                         }.sortedBy { it.owner + "   " + it.id }
                 },
-                { Timber.v(it, "XXX Error in Observe") })
+                { Timber.v(it, "XXX Error in Observe ${it.message}") })
             .addTo(disposables)
     }
 
@@ -101,7 +101,7 @@ class MainViewModel @Inject constructor(private val jobRepository: JobRepository
                 { savedJob ->
                     refreshJobInModel(savedJob)
                 },
-                { Timber.v(it, "XXX Error creating new") })
+                { Timber.v(it, "XXX Error creating new ${it.message}") })
             .addTo(disposables)
     }
 
@@ -111,7 +111,7 @@ class MainViewModel @Inject constructor(private val jobRepository: JobRepository
             .observeOn(AndroidSchedulers.mainThread())
             .subscribe(
                 { },
-                { Timber.v(it, "XXX Error deleting job") })
+                { Timber.v(it, "XXX Error deleting job ${it.message}") })
             .addTo(disposables)
     }
 
