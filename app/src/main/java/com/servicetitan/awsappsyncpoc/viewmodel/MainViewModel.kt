@@ -5,6 +5,7 @@ import androidx.lifecycle.MutableLiveData
 import com.amplifyframework.datastore.DataStoreItemChange
 import com.amplifyframework.datastore.generated.model.Job
 import com.amplifyframework.datastore.generated.model.JobStatus
+import com.servicetitan.awsappsyncpoc.extension.scheduleIOToMainThread
 import com.servicetitan.awsappsyncpoc.repository.JobRepository
 import io.reactivex.android.schedulers.AndroidSchedulers
 import io.reactivex.rxkotlin.addTo
@@ -20,8 +21,7 @@ class MainViewModel @Inject constructor(private val jobRepository: JobRepository
     fun init() {
         // One-time query.
         jobRepository.queryCurrentJobs()
-            .subscribeOn(Schedulers.io())
-            .observeOn(AndroidSchedulers.mainThread())
+            .scheduleIOToMainThread()
             .subscribe(
                 { job ->
                     refreshJobInModel(job)
@@ -31,8 +31,7 @@ class MainViewModel @Inject constructor(private val jobRepository: JobRepository
 
         // Observe for changes.
         jobRepository.observeJobChanges()
-            .subscribeOn(Schedulers.io())
-            .observeOn(AndroidSchedulers.mainThread())
+            .scheduleIOToMainThread()
             .subscribe(
                 { itemChange ->
                     jobs.value =
@@ -58,8 +57,7 @@ class MainViewModel @Inject constructor(private val jobRepository: JobRepository
             .flatMap { job ->
                 jobRepository.saveJob(job.copyOfBuilder().status(status).build())
             }
-            .subscribeOn(Schedulers.io())
-            .observeOn(AndroidSchedulers.mainThread())
+            .scheduleIOToMainThread()
             .subscribe(
                 { savedJob ->
                     refreshJobInModel(savedJob)
@@ -74,8 +72,7 @@ class MainViewModel @Inject constructor(private val jobRepository: JobRepository
             .flatMap { job ->
                 jobRepository.saveJob(job.copyOfBuilder().owner(owner).build())
             }
-            .subscribeOn(Schedulers.io())
-            .observeOn(AndroidSchedulers.mainThread())
+            .scheduleIOToMainThread()
             .subscribe(
                 { savedJob ->
                     refreshJobInModel(savedJob)
@@ -95,8 +92,7 @@ class MainViewModel @Inject constructor(private val jobRepository: JobRepository
                 .status(JobStatus.SCHEDULED)
                 .build()
         )
-            .subscribeOn(Schedulers.io())
-            .observeOn(AndroidSchedulers.mainThread())
+            .scheduleIOToMainThread()
             .subscribe(
                 { savedJob ->
                     refreshJobInModel(savedJob)
@@ -107,8 +103,7 @@ class MainViewModel @Inject constructor(private val jobRepository: JobRepository
 
     fun deleteJob(job: Job) {
         jobRepository.deleteJob(job)
-            .subscribeOn(Schedulers.io())
-            .observeOn(AndroidSchedulers.mainThread())
+            .scheduleIOToMainThread()
             .subscribe(
                 { },
                 { Timber.v(it, "XXX Error deleting job ${it.message}") })
