@@ -122,9 +122,10 @@ class MainViewModel @Inject constructor(private val jobRepository: JobRepository
 
     fun deleteJob(job: Job) {
         ioScope.launch {
-            kotlin.runCatching {
-                jobRepository.deleteJob(job).single()
-            }.onFailure { Timber.v(it, "XXX Error deleting job ${it.message}") }
+            jobRepository.deleteJob(job)
+                .onCompletion { }
+                .catch { Timber.v(it, "XXX Error deleting job ${it.message}") }
+                .single()
         }
     }
 
