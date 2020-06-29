@@ -26,7 +26,6 @@ class STJobRepository @Inject constructor() : JobRepository {
                 while (queriedJobs.hasNext()) {
                     subscriber.onNext(queriedJobs.next().apply {
                         Timber.v("XXX Query Found $this")
-                        subscriber.onNext(this)
                     })
                 }
 
