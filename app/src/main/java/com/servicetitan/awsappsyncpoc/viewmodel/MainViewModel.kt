@@ -53,7 +53,7 @@ class MainViewModel @Inject constructor(private val jobRepository: JobRepository
                                     DataStoreItemChange.Type.DELETE ->
                                         remove(itemChange.item())
                                 }
-                            }.sortedBy { it.owner + "   " + it.id }
+                            }.sortedBy { jobSortString(it) }
                     }
                 }
                 .onCompletion { }
@@ -70,7 +70,7 @@ class MainViewModel @Inject constructor(private val jobRepository: JobRepository
                     jobRepository.saveJob(job.copyOfBuilder().status(status).build())
                 }
                 .flowOn(main)
-                .onEach { job -> refreshJobInModel(job) }
+                .onEach { savedJob -> refreshJobInModel(savedJob) }
                 .onCompletion { }
                 .catch { Timber.e(it, "XXX Error in updateJobStatus ${it.message}") }
                 .single()
@@ -90,9 +90,9 @@ class MainViewModel @Inject constructor(private val jobRepository: JobRepository
                     jobRepository.saveJob(job.copyOfBuilder().owner(owner).build())
                 }
                 .flowOn(main)
-                .onEach { job -> refreshJobInModel(job) }
+                .onEach { savedJob -> refreshJobInModel(savedJob) }
                 .onCompletion { }
-                .catch { Timber.e(it, "XXX Error in updateJobStatus ${it.message}") }
+                .catch { Timber.e(it, "XXX Error in updateJobOwner ${it.message}") }
                 .single()
         }
 
@@ -115,7 +115,7 @@ class MainViewModel @Inject constructor(private val jobRepository: JobRepository
                 .flowOn(main)
                 .onEach { savedJob -> refreshJobInModel(savedJob) }
                 .onCompletion { }
-                .catch { Timber.e(it, "XXX Error in saveJob ${it.message}") }
+                .catch { Timber.e(it, "XXX Error in addNewJob ${it.message}") }
                 .single()
         }
     }
@@ -124,7 +124,7 @@ class MainViewModel @Inject constructor(private val jobRepository: JobRepository
         ioScope.launch {
             jobRepository.deleteJob(job)
                 .onCompletion { }
-                .catch { Timber.v(it, "XXX Error deleting job ${it.message}") }
+                .catch { Timber.v(it, "XXX Error in deleteJob ${it.message}") }
                 .single()
         }
     }
@@ -134,8 +134,11 @@ class MainViewModel @Inject constructor(private val jobRepository: JobRepository
             jobs.value = jobs.value!!.toMutableList().apply {
                 removeIf { it.id == job.id }
                 add(job)
-            }.sortedBy { it.owner + "   " + it.id }
+            }.sortedBy { jobSortString(it) }
         }
     }
+
+    private fun jobSortString(it: Job) =
+        it.owner + "   " + it.id
 }
 
