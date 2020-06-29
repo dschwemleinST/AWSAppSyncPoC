@@ -28,56 +28,34 @@ class MainViewModel @Inject constructor(private val jobRepository: JobRepository
         ioScope.launch {
             jobRepository.queryCurrentJobs()
                 .flowOn(main)
+                .onEach { job -> refreshJobInModel(job) }
                 .onCompletion { }
                 .catch { Timber.e(it, "XXX Error in queryCurrentJobs ${it.message}") }
-                .toList().forEach { job ->
-                    refreshJobInModel(job)
-                }
+                .collect()
         }
 
         // Observe for changes.
         ioScope.launch {
             jobRepository.observeJobChanges()
                 .flowOn(main)
-                .onEach { itemChange ->
-                    mainScope.launch { // Why needed, given the above flowOn()?
-                        jobs.value =
-                            jobs.value!!.toMutableList().apply {
-                                when (itemChange.type()) {
-                                    DataStoreItemChange.Type.CREATE ->
-                                        add(itemChange.item())
-                                    DataStoreItemChange.Type.UPDATE -> {
-                                        removeIf { it.id == itemChange.item().id }
-                                        add(itemChange.item())
-                                    }
-                                    DataStoreItemChange.Type.DELETE ->
-                                        remove(itemChange.item())
-                                }
-                            }.sortedBy { jobSortString(it) }
-                    }
-                }
+                .onEach { itemChange -> processItemChange(itemChange) }
                 .onCompletion { }
                 .catch { Timber.e(it, "XXX Error in observeJobChanges ${it.message}") }
                 .collect()
         }
     }
 
+    @FlowPreview
     @ExperimentalCoroutinesApi
     fun updateJobStatus(jobID: String, status: JobStatus) {
         ioScope.launch {
             jobRepository.getJob(jobID)
-                .flatMapConcat { job ->
-                    jobRepository.saveJob(job.copyOfBuilder().status(status).build())
-                }
+                .flatMapConcat { job -> jobRepository.saveJob(job.copyOfBuilder().status(status).build()) }
                 .flowOn(main)
                 .onEach { savedJob -> refreshJobInModel(savedJob) }
-                .onCompletion { }
+                .onCompletion { hideKeyboard.call() }
                 .catch { Timber.e(it, "XXX Error in updateJobStatus ${it.message}") }
                 .single()
-        }
-
-        mainScope.launch {
-            hideKeyboard.call()
         }
     }
 
@@ -86,32 +64,19 @@ class MainViewModel @Inject constructor(private val jobRepository: JobRepository
     fun updateJobOwner(jobID: String, owner: String) {
         ioScope.launch {
             jobRepository.getJob(jobID)
-                .flatMapConcat { job ->
-                    jobRepository.saveJob(job.copyOfBuilder().owner(owner).build())
-                }
+                .flatMapConcat { job -> jobRepository.saveJob(job.copyOfBuilder().owner(owner).build()) }
                 .flowOn(main)
                 .onEach { savedJob -> refreshJobInModel(savedJob) }
-                .onCompletion { }
+                .onCompletion { hideKeyboard.call() }
                 .catch { Timber.e(it, "XXX Error in updateJobOwner ${it.message}") }
                 .single()
         }
-
-        mainScope.launch {
-            hideKeyboard.call()
-        }
     }
 
+    @ExperimentalCoroutinesApi
     fun addNewJob() {
         ioScope.launch {
-            jobRepository.saveJob(
-                Job.Builder()
-                    .title("Random title")
-                    .owner("Michael Keaton")
-                    .phoneNumber("555-555-1234")
-                    .address("Some Address")
-                    .status(JobStatus.SCHEDULED)
-                    .build()
-            )
+            jobRepository.saveJob(generateNewJob())
                 .flowOn(main)
                 .onEach { savedJob -> refreshJobInModel(savedJob) }
                 .onCompletion { }
@@ -120,6 +85,7 @@ class MainViewModel @Inject constructor(private val jobRepository: JobRepository
         }
     }
 
+    @ExperimentalCoroutinesApi
     fun deleteJob(job: Job) {
         ioScope.launch {
             jobRepository.deleteJob(job)
@@ -129,12 +95,40 @@ class MainViewModel @Inject constructor(private val jobRepository: JobRepository
         }
     }
 
+    private fun generateNewJob(): Job {
+        return Job.Builder()
+            .title("Random title")
+            .owner("Michael Keaton")
+            .phoneNumber("555-555-1234")
+            .address("Some Address")
+            .status(JobStatus.SCHEDULED)
+            .build()
+    }
+
     private fun refreshJobInModel(job: Job) {
         mainScope.launch {
             jobs.value = jobs.value!!.toMutableList().apply {
                 removeIf { it.id == job.id }
                 add(job)
             }.sortedBy { jobSortString(it) }
+        }
+    }
+
+    private fun processItemChange(itemChange: DataStoreItemChange<Job>) {
+        mainScope.launch { // Why needed, given flowOn()?
+            jobs.value =
+                jobs.value!!.toMutableList().apply {
+                    when (itemChange.type()) {
+                        DataStoreItemChange.Type.CREATE ->
+                            add(itemChange.item())
+                        DataStoreItemChange.Type.UPDATE -> {
+                            removeIf { it.id == itemChange.item().id }
+                            add(itemChange.item())
+                        }
+                        DataStoreItemChange.Type.DELETE ->
+                            remove(itemChange.item())
+                    }
+                }.sortedBy { jobSortString(it) }
         }
     }
 
