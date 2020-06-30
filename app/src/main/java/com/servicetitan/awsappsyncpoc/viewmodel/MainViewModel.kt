@@ -39,7 +39,7 @@ class MainViewModel @Inject constructor(private val jobRepository: JobRepository
         mainScope.launch {
             jobRepository.observeJobChanges()
                 .flowOn(io)
-                .onEach { itemChange -> processItemChange(itemChange) }
+                .onEach { itemChange -> processJobChange(itemChange) }
                 .flowOn(main)
                 .onCompletion { }
                 .catch { Timber.e(it, "XXX Error in observeJobChanges ${it.message}") }
@@ -118,7 +118,7 @@ class MainViewModel @Inject constructor(private val jobRepository: JobRepository
         }.sortedBy { jobSortString(it) }
     }
 
-    private fun processItemChange(itemChange: DataStoreItemChange<Job>) {
+    private fun processJobChange(itemChange: DataStoreItemChange<Job>) {
         jobs.value =
             jobs.value!!.toMutableList().apply {
                 when (itemChange.type()) {
