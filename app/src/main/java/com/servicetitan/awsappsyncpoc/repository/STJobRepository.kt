@@ -98,15 +98,13 @@ class STJobRepository @Inject constructor() : JobRepository {
     @ExperimentalCoroutinesApi
     override fun deleteJob(job: Job) = callbackFlow<Unit> {
         Timber.v("XXX Deleting Job")
-        kotlin.runCatching {
-            Amplify.DataStore.delete(job, { itemChange ->
-                Timber.v("XXX Success deleting job ${itemChange.item()}")
-            }, { exception ->
-                Timber.v(exception, "XXX Error deleting job ${exception.message}")
-                cancel(CancellationException("XXX Error", exception))
-                throw exception
-            })
-        }.onFailure { throw it }
+        Amplify.DataStore.delete(job, { itemChange ->
+            Timber.v("XXX Success deleting job ${itemChange.item()}")
+        }, { exception ->
+            Timber.v(exception, "XXX Error deleting job ${exception.message}")
+            cancel(CancellationException("XXX Error", exception))
+            throw exception
+        })
         awaitClose { }
     }
 }

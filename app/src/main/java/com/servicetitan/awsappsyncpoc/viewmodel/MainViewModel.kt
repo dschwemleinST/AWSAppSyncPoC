@@ -2,6 +2,7 @@ package com.servicetitan.awsappsyncpoc.viewmodel
 
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
+import androidx.lifecycle.viewModelScope
 import com.amplifyframework.datastore.DataStoreItemChange
 import com.amplifyframework.datastore.generated.model.Job
 import com.amplifyframework.datastore.generated.model.JobStatus
@@ -16,19 +17,11 @@ class MainViewModel @Inject constructor(private val jobRepository: JobRepository
     private val jobs by lazy { MutableLiveData<List<Job>>(emptyList()) }
     fun getJobs(): LiveData<List<Job>> = jobs
 
-    private val main = Dispatchers.Main
-    private val io = Dispatchers.IO
-
-    private val mainScope = CoroutineScope(SupervisorJob() + main)
-    private val ioScope = CoroutineScope(SupervisorJob() + io)
-
     @ExperimentalCoroutinesApi
     fun init() {
         // One-time query.
-        mainScope.launch {
+        viewModelScope.launch {
             jobRepository.queryCurrentJobs()
-                .flowOn(io)
-                .onCompletion { }
                 .catch { Timber.e(it, "XXX Error in queryCurrentJobs ${it.message}") }
                 .collect { job ->
                     refreshJobInModel(job)
@@ -36,9 +29,8 @@ class MainViewModel @Inject constructor(private val jobRepository: JobRepository
         }
 
         // Observe for changes.
-        mainScope.launch {
+        viewModelScope.launch {
             jobRepository.observeJobChanges()
-                .flowOn(io)
                 .catch { Timber.e(it, "XXX Error in observeJobChanges ${it.message}") }
                 .collect { itemChange ->
                     processJobChange(itemChange)
@@ -49,14 +41,12 @@ class MainViewModel @Inject constructor(private val jobRepository: JobRepository
     @FlowPreview
     @ExperimentalCoroutinesApi
     fun updateJobStatus(jobID: String, status: JobStatus) {
-        mainScope.launch {
+        viewModelScope.launch {
             jobRepository.getJob(jobID)
                 .flatMapConcat { job ->
                     jobRepository.saveJob(job.copyOfBuilder().status(status).build())
                 }
-                .flowOn(io)
                 .onCompletion { hideKeyboard.call() }
-                .flowOn(main)
                 .catch { Timber.e(it, "XXX Error in updateJobStatus ${it.message}") }
                 .collect { savedJob ->
                     refreshJobInModel(savedJob)
@@ -67,14 +57,12 @@ class MainViewModel @Inject constructor(private val jobRepository: JobRepository
     @ExperimentalCoroutinesApi
     @FlowPreview
     fun updateJobOwner(jobID: String, owner: String) {
-        mainScope.launch {
+        viewModelScope.launch {
             jobRepository.getJob(jobID)
                 .flatMapConcat { job ->
                     jobRepository.saveJob(job.copyOfBuilder().owner(owner).build())
                 }
-                .flowOn(io)
                 .onCompletion { hideKeyboard.call() }
-                .flowOn(main)
                 .catch { Timber.e(it, "XXX Error in updateJobOwner ${it.message}") }
                 .collect { savedJob ->
                     refreshJobInModel(savedJob)
@@ -84,10 +72,8 @@ class MainViewModel @Inject constructor(private val jobRepository: JobRepository
 
     @ExperimentalCoroutinesApi
     fun addNewJob() {
-        mainScope.launch {
+        viewModelScope.launch {
             jobRepository.saveJob(generateNewJob())
-                .flowOn(io)
-                .onCompletion { }
                 .catch { Timber.e(it, "XXX Error in addNewJob ${it.message}") }
                 .collect { savedJob -> refreshJobInModel(savedJob) }
         }
@@ -95,9 +81,8 @@ class MainViewModel @Inject constructor(private val jobRepository: JobRepository
 
     @ExperimentalCoroutinesApi
     fun deleteJob(job: Job) {
-        ioScope.launch {
+        viewModelScope.launch {
             jobRepository.deleteJob(job)
-                .onCompletion { }
                 .catch { Timber.v(it, "XXX Error in deleteJob ${it.message}") }
                 .collect()
         }
