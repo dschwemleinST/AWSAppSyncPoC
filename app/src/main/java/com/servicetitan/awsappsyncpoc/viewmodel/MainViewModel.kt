@@ -28,22 +28,21 @@ class MainViewModel @Inject constructor(private val jobRepository: JobRepository
         mainScope.launch {
             jobRepository.queryCurrentJobs()
                 .flowOn(io)
-                .onEach { job -> refreshJobInModel(job) }
-                .flowOn(main)
                 .onCompletion { }
                 .catch { Timber.e(it, "XXX Error in queryCurrentJobs ${it.message}") }
-                .collect()
+                .collect { job ->
+                    refreshJobInModel(job)
+                }
         }
 
         // Observe for changes.
         mainScope.launch {
             jobRepository.observeJobChanges()
                 .flowOn(io)
-                .onEach { itemChange -> processJobChange(itemChange) }
-                .flowOn(main)
-                .onCompletion { }
                 .catch { Timber.e(it, "XXX Error in observeJobChanges ${it.message}") }
-                .collect()
+                .collect { itemChange ->
+                    processJobChange(itemChange)
+                }
         }
     }
 
@@ -52,13 +51,16 @@ class MainViewModel @Inject constructor(private val jobRepository: JobRepository
     fun updateJobStatus(jobID: String, status: JobStatus) {
         mainScope.launch {
             jobRepository.getJob(jobID)
-                .flatMapConcat { job -> jobRepository.saveJob(job.copyOfBuilder().status(status).build()) }
+                .flatMapConcat { job ->
+                    jobRepository.saveJob(job.copyOfBuilder().status(status).build())
+                }
                 .flowOn(io)
-                .onEach { savedJob -> refreshJobInModel(savedJob) }
-                .flowOn(main)
                 .onCompletion { hideKeyboard.call() }
+                .flowOn(main)
                 .catch { Timber.e(it, "XXX Error in updateJobStatus ${it.message}") }
-                .single()
+                .collect { savedJob ->
+                    refreshJobInModel(savedJob)
+                }
         }
     }
 
@@ -67,13 +69,16 @@ class MainViewModel @Inject constructor(private val jobRepository: JobRepository
     fun updateJobOwner(jobID: String, owner: String) {
         mainScope.launch {
             jobRepository.getJob(jobID)
-                .flatMapConcat { job -> jobRepository.saveJob(job.copyOfBuilder().owner(owner).build()) }
+                .flatMapConcat { job ->
+                    jobRepository.saveJob(job.copyOfBuilder().owner(owner).build())
+                }
                 .flowOn(io)
-                .onEach { savedJob -> refreshJobInModel(savedJob) }
-                .flowOn(main)
                 .onCompletion { hideKeyboard.call() }
+                .flowOn(main)
                 .catch { Timber.e(it, "XXX Error in updateJobOwner ${it.message}") }
-                .single()
+                .collect { savedJob ->
+                    refreshJobInModel(savedJob)
+                }
         }
     }
 
@@ -82,22 +87,19 @@ class MainViewModel @Inject constructor(private val jobRepository: JobRepository
         mainScope.launch {
             jobRepository.saveJob(generateNewJob())
                 .flowOn(io)
-                .onEach { savedJob -> refreshJobInModel(savedJob) }
-                .flowOn(main)
                 .onCompletion { }
                 .catch { Timber.e(it, "XXX Error in addNewJob ${it.message}") }
-                .single()
+                .collect { savedJob -> refreshJobInModel(savedJob) }
         }
     }
 
     @ExperimentalCoroutinesApi
     fun deleteJob(job: Job) {
-        mainScope.launch {
+        ioScope.launch {
             jobRepository.deleteJob(job)
-                .flowOn(io)
                 .onCompletion { }
                 .catch { Timber.v(it, "XXX Error in deleteJob ${it.message}") }
-                .single()
+                .collect()
         }
     }
 
