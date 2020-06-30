@@ -4,13 +4,11 @@ import com.amplifyframework.core.Amplify
 import com.amplifyframework.core.model.query.Where
 import com.amplifyframework.datastore.DataStoreItemChange
 import com.amplifyframework.datastore.generated.model.Job
-import com.amplifyframework.datastore.generated.model.JobStatus
-import kotlinx.coroutines.*
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.cancel
 import kotlinx.coroutines.channels.awaitClose
-import kotlinx.coroutines.channels.sendBlocking
 import kotlinx.coroutines.flow.callbackFlow
-import kotlinx.coroutines.flow.channelFlow
-import kotlinx.coroutines.flow.flow
 import timber.log.Timber
 import javax.inject.Inject
 
@@ -27,7 +25,8 @@ class STJobRepository @Inject constructor() : JobRepository {
                     Timber.v("XXX Query Found No Jobs")
                 }
 
-                queriedJobs.forEach { sendBlocking(it) }
+                queriedJobs.forEach { offer(it) }
+                close()
 
                 Timber.v("XXX Query onComplete")
             },
@@ -46,7 +45,7 @@ class STJobRepository @Inject constructor() : JobRepository {
             { Timber.v("XXX Observation began") },
             { itemChange ->
                 Timber.v("XXX Observed Job: $itemChange")
-                sendBlocking(itemChange)
+                offer(itemChange)
             },
             { exception ->
                 Timber.e(exception, "XXX Observation failed ${exception.message}")
@@ -67,7 +66,8 @@ class STJobRepository @Inject constructor() : JobRepository {
             job,
             { itemChange ->
                 Timber.v("XXX Saved job ${itemChange.item()}")
-                sendBlocking(itemChange.item())
+                offer(itemChange.item())
+                close()
             },
             { exception ->
                 Timber.e(exception, "XXX Save job failed: ${exception.message}")
@@ -84,7 +84,8 @@ class STJobRepository @Inject constructor() : JobRepository {
             { jobs ->
                 val existingJob = jobs.next()
                 Timber.v("XXX Found existing job $existingJob")
-                sendBlocking(existingJob)
+                offer(existingJob)
+                close()
             },
             { exception ->
                 Timber.e(exception, "XXX Get job failed: ${exception.message}")
