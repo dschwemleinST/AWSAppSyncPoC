@@ -1,91 +1,72 @@
 package com.servicetitan.awsappsyncpoc.viewmodel
 
-import androidx.lifecycle.LiveData
-import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.viewModelScope
 import com.amplifyframework.datastore.DataStoreItemChange
 import com.amplifyframework.datastore.generated.model.Job
 import com.amplifyframework.datastore.generated.model.JobStatus
 import com.servicetitan.awsappsyncpoc.repository.JobRepository
-import kotlinx.coroutines.*
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.flow.*
 import timber.log.Timber
 import javax.inject.Inject
 
+@FlowPreview
+@ExperimentalCoroutinesApi
 class MainViewModel @Inject constructor(private val jobRepository: JobRepository) :
     BaseViewModel() {
-    private val jobs by lazy { MutableLiveData<List<Job>>(emptyList()) }
-    fun getJobs(): LiveData<List<Job>> = jobs
 
-    @ExperimentalCoroutinesApi
+    private val jobs = MutableStateFlow<List<Job>>(emptyList())
+    fun getJobs(): Flow<List<Job>> = jobs
+
     fun init() {
         // One-time query.
-        viewModelScope.launch {
-            jobRepository.queryCurrentJobs()
-                .catch { Timber.e(it, "XXX Error in queryCurrentJobs ${it.message}") }
-                .collect { job ->
-                    refreshJobInModel(job)
-                }
-        }
+        jobRepository.queryCurrentJobs()
+            .onEach { job -> refreshJobInModel(job) }
+            .catch { Timber.e(it, "XXX Error in queryCurrentJobs ${it.message}") }
+            .launchIn(viewModelScope)
 
         // Observe for changes.
-        viewModelScope.launch {
-            jobRepository.observeJobChanges()
-                .catch { Timber.e(it, "XXX Error in observeJobChanges ${it.message}") }
-                .collect { itemChange ->
-                    processJobChange(itemChange)
-                }
-        }
+        jobRepository.observeJobChanges()
+            .onEach { itemChange -> processJobChange(itemChange) }
+            .catch { Timber.e(it, "XXX Error in observeJobChanges ${it.message}") }
+            .launchIn(viewModelScope)
     }
 
-    @FlowPreview
-    @ExperimentalCoroutinesApi
     fun updateJobStatus(jobID: String, status: JobStatus) {
-        viewModelScope.launch {
-            jobRepository.getJob(jobID)
-                .flatMapConcat { job ->
-                    jobRepository.saveJob(job.copyOfBuilder().status(status).build())
-                }
-                .onCompletion { hideKeyboard.call() }
-                .catch { Timber.e(it, "XXX Error in updateJobStatus ${it.message}") }
-                .collect { savedJob ->
-                    refreshJobInModel(savedJob)
-                }
-        }
+        jobRepository.getJob(jobID)
+            .flatMapConcat { gotJob -> jobRepository.saveJob(gotJob.copyOfBuilder().status(status).build()) }
+            .onEach { savedJob -> refreshJobInModel(savedJob) }
+            .onCompletion { hideKeyboard.call() }
+            .catch { Timber.e(it, "XXX Error in updateJobStatus ${it.message}") }
+            .launchIn(viewModelScope)
     }
 
-    @ExperimentalCoroutinesApi
-    @FlowPreview
     fun updateJobOwner(jobID: String, owner: String) {
-        viewModelScope.launch {
-            jobRepository.getJob(jobID)
-                .flatMapConcat { job ->
-                    jobRepository.saveJob(job.copyOfBuilder().owner(owner).build())
-                }
-                .onCompletion { hideKeyboard.call() }
-                .catch { Timber.e(it, "XXX Error in updateJobOwner ${it.message}") }
-                .collect { savedJob ->
-                    refreshJobInModel(savedJob)
-                }
-        }
+        jobRepository.getJob(jobID)
+            .flatMapConcat { gotJob ->
+                jobRepository.saveJob(
+                    gotJob.copyOfBuilder().owner(owner).build()
+                )
+            }
+            .onEach { savedJob -> refreshJobInModel(savedJob) }
+            .onCompletion { hideKeyboard.call() }
+            .catch { Timber.e(it, "XXX Error in updateJobOwner ${it.message}") }
+            .launchIn(viewModelScope)
     }
 
-    @ExperimentalCoroutinesApi
     fun addNewJob() {
-        viewModelScope.launch {
-            jobRepository.saveJob(generateNewJob())
-                .catch { Timber.e(it, "XXX Error in addNewJob ${it.message}") }
-                .collect { savedJob -> refreshJobInModel(savedJob) }
-        }
+        jobRepository.saveJob(generateNewJob())
+            .onEach { savedJob -> refreshJobInModel(savedJob) }
+            .catch { Timber.e(it, "XXX Error in addNewJob ${it.message}") }
+            .launchIn(viewModelScope)
     }
 
-    @ExperimentalCoroutinesApi
     fun deleteJob(job: Job) {
-        viewModelScope.launch {
-            jobRepository.deleteJob(job)
-                .catch { Timber.v(it, "XXX Error in deleteJob ${it.message}") }
-                .collect()
-        }
+        jobRepository.getJob(job.id)
+            .flatMapConcat { gotJob -> jobRepository.deleteJob(gotJob) }
+            .catch { Timber.v(it, "XXX Error in deleteJob ${it.message}") }
+            .launchIn(viewModelScope)
     }
 
     private fun generateNewJob(): Job {
@@ -99,7 +80,7 @@ class MainViewModel @Inject constructor(private val jobRepository: JobRepository
     }
 
     private fun refreshJobInModel(job: Job) {
-        jobs.value = jobs.value!!.toMutableList().apply {
+        jobs.value = jobs.value.toMutableList().apply {
             removeIf { it.id == job.id }
             add(job)
         }.sortedBy { jobSortString(it) }
@@ -107,7 +88,7 @@ class MainViewModel @Inject constructor(private val jobRepository: JobRepository
 
     private fun processJobChange(itemChange: DataStoreItemChange<Job>) {
         jobs.value =
-            jobs.value!!.toMutableList().apply {
+            jobs.value.toMutableList().apply {
                 when (itemChange.type()) {
                     DataStoreItemChange.Type.CREATE ->
                         add(itemChange.item())

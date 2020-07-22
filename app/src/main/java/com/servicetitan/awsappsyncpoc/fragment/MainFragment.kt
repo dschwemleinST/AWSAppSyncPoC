@@ -4,15 +4,21 @@ import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import androidx.lifecycle.Observer
 import androidx.recyclerview.widget.LinearLayoutManager
 import com.amplifyframework.datastore.generated.model.Job
 import com.amplifyframework.datastore.generated.model.JobStatus
 import com.servicetitan.awsappsyncpoc.databinding.FragmentMainBinding
 import com.servicetitan.awsappsyncpoc.di.provideComponent
 import com.servicetitan.awsappsyncpoc.viewmodel.MainViewModel
+import kotlinx.coroutines.FlowPreview
+import kotlinx.coroutines.flow.launchIn
+import kotlinx.coroutines.flow.onEach
 import timber.log.Timber
+import androidx.lifecycle.lifecycleScope
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 
+@ExperimentalCoroutinesApi
+@FlowPreview
 class MainFragment : BaseFragment<MainViewModel, FragmentMainBinding>(),
     MainRecyclerViewAdapter.Callbacks {
 
@@ -25,21 +31,23 @@ class MainFragment : BaseFragment<MainViewModel, FragmentMainBinding>(),
     ): View? {
         _binding = FragmentMainBinding.inflate(inflater, container, false)
 
-        binding.mainRecyclerView.adapter = MainRecyclerViewAdapter(context!!, this)
+        binding.mainRecyclerView.adapter = MainRecyclerViewAdapter(requireContext(), this)
         binding.mainRecyclerView.layoutManager = LinearLayoutManager(context)
 
         return binding.root
     }
 
     override fun observeViewModel() {
-        viewModel.getJobs().observe(viewLifecycleOwner, Observer { updatedJobs ->
-            Timber.v("Fragment got job update $updatedJobs")
+        viewModel.getJobs()
+            .onEach { updatedJobs ->
+                Timber.v("Fragment got job update $updatedJobs")
 
-            jobs.clear()
-            updatedJobs.forEach { jobs[it.id] = it }
+                jobs.clear()
+                updatedJobs.forEach { jobs[it.id] = it }
 
-            (binding.mainRecyclerView.adapter as MainRecyclerViewAdapter).updateJobs(jobs.values.toMutableList())
-        })
+                (binding.mainRecyclerView.adapter as MainRecyclerViewAdapter).updateJobs(jobs.values.toMutableList())
+            }
+            .launchIn(lifecycleScope)
 
         viewModel.init()
     }

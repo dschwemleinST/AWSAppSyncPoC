@@ -16,6 +16,7 @@ class STJobRepository @Inject constructor() : JobRepository {
 
     @ExperimentalCoroutinesApi
     override fun queryCurrentJobs() = callbackFlow<Job> {
+        Timber.v("XXX Thread " + Thread.currentThread().name)
         Amplify.DataStore.query(
             Job::class.java,
             { queriedJobs ->
@@ -60,7 +61,7 @@ class STJobRepository @Inject constructor() : JobRepository {
     }
 
     @ExperimentalCoroutinesApi
-    override fun saveJob(job: Job) = callbackFlow<Job>{
+    override fun saveJob(job: Job) = callbackFlow {
         Timber.v("XXX saveJob $job")
         Amplify.DataStore.save(
             job,
