@@ -4,25 +4,15 @@ import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import androidx.recyclerview.widget.LinearLayoutManager
-import com.amplifyframework.datastore.generated.model.Job
-import com.amplifyframework.datastore.generated.model.JobStatus
 import com.servicetitan.awsappsyncpoc.databinding.FragmentMainBinding
 import com.servicetitan.awsappsyncpoc.di.provideComponent
 import com.servicetitan.awsappsyncpoc.viewmodel.MainViewModel
-import kotlinx.coroutines.FlowPreview
-import kotlinx.coroutines.flow.launchIn
-import kotlinx.coroutines.flow.onEach
-import timber.log.Timber
-import androidx.lifecycle.lifecycleScope
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.FlowPreview
 
 @ExperimentalCoroutinesApi
 @FlowPreview
-class MainFragment : BaseFragment<MainViewModel, FragmentMainBinding>(),
-    MainRecyclerViewAdapter.Callbacks {
-
-    private val jobs = linkedMapOf<String, Job>()
+class MainFragment : BaseFragment<MainViewModel, FragmentMainBinding>() {
 
     override fun onCreateView(
         inflater: LayoutInflater,
@@ -31,49 +21,11 @@ class MainFragment : BaseFragment<MainViewModel, FragmentMainBinding>(),
     ): View? {
         _binding = FragmentMainBinding.inflate(inflater, container, false)
 
-        binding.mainRecyclerView.adapter = MainRecyclerViewAdapter(requireContext(), this)
-        binding.mainRecyclerView.layoutManager = LinearLayoutManager(context)
-
         return binding.root
     }
 
     override fun observeViewModel() {
-        viewModel.getJobs()
-            .onEach { updatedJobs ->
-                Timber.v("Fragment got job update $updatedJobs")
-
-                jobs.clear()
-                updatedJobs.forEach { jobs[it.id] = it }
-
-                (binding.mainRecyclerView.adapter as MainRecyclerViewAdapter).updateJobs(jobs.values.toMutableList())
-            }
-            .launchIn(lifecycleScope)
-
         viewModel.init()
-    }
-
-    override fun onScheduledButtonClicked(jobId: String, owner: String) {
-        viewModel.updateJobStatus(jobId, JobStatus.SCHEDULED)
-    }
-
-    override fun onDispatchedButtonClicked(jobId: String, owner: String) {
-        viewModel.updateJobStatus(jobId, JobStatus.DISPATCHED)
-    }
-
-    override fun onCompletedButtonClicked(jobId: String, owner: String) {
-        viewModel.updateJobStatus(jobId, JobStatus.COMPLETED)
-    }
-
-    override fun saveJobButtonClicked(jobId: String, owner: String) {
-        viewModel.updateJobOwner(jobId, owner)
-    }
-
-    override fun addNewJobButtonClicked() {
-        viewModel.addNewJob()
-    }
-
-    override fun closeJobButtonClicked(job: Job) {
-        viewModel.deleteJob(job)
     }
 
     override fun inject() {

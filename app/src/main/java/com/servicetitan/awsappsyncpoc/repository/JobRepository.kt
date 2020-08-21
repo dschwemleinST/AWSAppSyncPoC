@@ -1,14 +1,12 @@
 package com.servicetitan.awsappsyncpoc.repository
 
-import com.amplifyframework.datastore.DataStoreItemChange
-import com.amplifyframework.datastore.generated.model.Job
 import kotlinx.coroutines.flow.Flow
 
 interface JobRepository {
-    fun queryCurrentJobs(): Flow<Job>
-    fun observeJobChanges(): Flow<DataStoreItemChange<Job>>
+    fun queryCurrentJobs(): Flow<Any>
+    fun observeJobChanges(): Flow<Any>
 
-    fun getJob(jobID: String): Flow<Job>
-    fun saveJob(job: Job): Flow<Job>
-    fun deleteJob(job: Job): Flow<Unit>
+    fun getJob(jobID: String): Flow<Any>
+    fun saveJob(job: Any): Flow<Any>
+    fun deleteJob(job: Any): Flow<Unit>
 }

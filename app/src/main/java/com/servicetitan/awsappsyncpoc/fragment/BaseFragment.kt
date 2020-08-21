@@ -11,7 +11,7 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.navigation.NavDirections
 import androidx.navigation.fragment.findNavController
 import androidx.viewbinding.ViewBinding
-import com.servicetitan.awsappsyncpoc.ServiceTitanApplication
+import com.servicetitan.awsappsyncpoc.MainApplication
 import com.servicetitan.awsappsyncpoc.di.ApplicationComponent
 import javax.inject.Inject
 import com.servicetitan.awsappsyncpoc.viewmodel.BaseViewModel
@@ -28,7 +28,7 @@ abstract class BaseFragment<VM : BaseViewModel, VB : ViewBinding> : Fragment() {
     lateinit var viewModelProviderFactory: ViewModelProvider.Factory
 
     protected val component: ApplicationComponent by lazy(mode = LazyThreadSafetyMode.NONE) {
-        (activity?.application as ServiceTitanApplication).component
+        (activity?.application as MainApplication).component
     }
 
     protected val viewModel: VM by lazy {

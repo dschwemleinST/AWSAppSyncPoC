@@ -11,5 +11,5 @@ class TestServiceTitanApplicationRunner : AndroidJUnitRunner() {
         className: String?,
         context: Context?
     ): Application =
-        Instrumentation.newApplication(TestServiceTitanApplication::class.java, context)
+        Instrumentation.newApplication(TestMainApplication::class.java, context)
 }

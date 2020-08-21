@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">AWS AppSync PoC</string>
+    <string name="app_name">Skeleton</string>
     <string name="change_value">Change Value</string>
     <string name="unknown"><![CDATA[<Unknown>]]></string>
     <string name="scheduled">Scheduled</string>

@@ -9,7 +9,7 @@ import com.servicetitan.awsappsyncpoc.di.DaggerApplicationComponent
 import com.servicetitan.awsappsyncpoc.di.ApplicationComponent
 import timber.log.Timber
 
-open class ServiceTitanApplication : Application() {
+open class MainApplication : Application() {
     open val component: ApplicationComponent by lazy {
         DaggerApplicationComponent.factory().create(this)
     }
@@ -18,14 +18,5 @@ open class ServiceTitanApplication : Application() {
         super.onCreate()
 
         Timber.plant(Timber.DebugTree())
-
-        try {
-            Amplify.addPlugin(AWSDataStorePlugin()) // Just local storage
-            Amplify.addPlugin(AWSApiPlugin()) // Remote model synchronization
-            Amplify.configure(applicationContext)
-            Timber.v("Initialized Amplify with DataStore and AppSync")
-        } catch (error: AmplifyException) {
-            Timber.e(error, "Could not initialize Amplify")
-        }
     }
 }
